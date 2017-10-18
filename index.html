@@ -1,39 +1,55 @@
 <!DOCTYPE html>
 <html>
-  <head>
-      <title>My A-Frame Test</title>
-      <script src="https://aframe.io/releases/0.7.0/aframe.min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js"></script>
 
-      <script>
-      var objects = new tracking.ObjectTracker(['face']);
-      objects.on('track', function(event) {
-        if (event.data.length === 0) {
-          // No objects were detected in this frame.
-        } else {
-          event.data.forEach(function(rect) {
-            // rect.x, rect.y, rect.height, rect.width
-          });
-        }
-      });
-      </script>
+<head>
+  <title>My A-Frame Test</title>
+  <script src="//aframe.io/releases/0.7.0/aframe.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js"></script>
+  <!-- <script src="https://unpkg.com/aframe-forcegraph-component/dist/aframe-forcegraph-component.min.js"></script> -->
+</head>
 
-      <!-- <script src="https://unpkg.com/aframe-forcegraph-component/dist/aframe-forcegraph-component.min.js"></script> -->
-  </head>
+<body>
+  <video id="video" width="320" height="240" preload autoplay loop muted style="opacity: 0.0000001;position: absolute"></video>
 
-  <body>
-    <a-scene>
-      <a-entity id="myCameraPosition" position="0 0 0">
-        <a-entity id="myCamera" camera look-controls keyboard-controls>
-        </a-entity>
+  <a-scene>
+    <a-entity id="myCameraPosition" position="0 0 0">
+      <a-entity id="myCamera" camera look-controls keyboard-controls>
       </a-entity>
-      <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
-      <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
-      <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
-      <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
-      <a-sky color="#ECECEC"></a-sky>
+    </a-entity>
+    <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
+    <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E"></a-sphere>
+    <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
+    <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
+    <a-sky color="#ECECEC"></a-sky>
+  </a-scene>
 
-    </a-scene>
-  </body>
+  <script>
+    let pos = null
+    let frame = null
+    const factor = 0.1
+    const camera = document.getElementById("myCameraPosition")
+    const tracker = new tracking.ObjectTracker(['face']);
+    tracker.setInitialScale(4);
+    tracker.setStepSize(2);
+    tracker.setEdgesDensity(0.1);
+
+    tracking.track("#video", tracker, { camera: true })
+    tracker.on('track', ({ data: [rect] }) => {
+      if (!rect) return
+      if (!pos) {
+        pos = rect
+        return
+      }
+
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const deltaX = pos.x - rect.x
+        const deltaY = pos.y - rect.y
+        camera.setAttribute("position", `${deltaX * factor} ${deltaY * factor} 0`)
+      })
+    });
+  </script>
+</body>
+
 </html>
