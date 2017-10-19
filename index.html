@@ -22,10 +22,14 @@
   </a-scene>
 
   <script>
+    // Load the camera feed from the user facing camera.
     navigator
       .mediaDevices
       .getUserMedia({ audio: false, video: { facingMode: 'user'} })
       .then(stream => {
+        /**
+         * Converts the camera stream into a video element and starts head tracking.
+         */
         let pos;
         const camera = document.getElementById("myCameraPosition")
         const video = document.createElement('video')
@@ -38,45 +42,36 @@
           tracker.init();
           tracker.start(video);
           updatePosition();
-          window.tracker = tracker
         }
         
+        /**
+         * Checks the current face position and updates the aframe camera.
+         */
         function updatePosition () {
+          requestAnimationFrame(updatePosition)
           const positions = tracker.getCurrentPosition();
+
           if (positions) {
-            const first = positions[0]
-            let minX = Infinity
-            let maxX = -Infinity
-            let minY = Infinity
-            let maxY = -Infinity
-            for (const [x, y] of positions) {
-              if (x < minX) {
-                minX = x
-              } else if (x > maxX) {
-                maxX = x
-              }
-
-              if (y < minY) {
-                minY = y
-              } else if (y > maxY) {
-                maxY = y
-              }
-            }
-
-            const avgX = minX + maxX / 2
-            const avgY = minY + maxY / 2
-            const area = (maxY - minY) * (maxX - minX)
+            /**
+             * Pulls out useful positions from clm tracker.
+             * @see {@link https://www.auduno.com/clmtrackr/examples/media/facemodel_numbering_new.png}
+             */
+            const [x, y] = positions[62]
+            const width = positions[1][0] - positions[13][0]
+            const height = positions[33][1] - positions[7][1]
 
             if (!pos) {
-              pos =  { avgX, avgY, area }
+              // Store initial position.
+              pos =  { x, y, width, height }
             } else {
-              const deltaX = pos.avgX - avgX
-              const deltaY = pos.avgY - avgY
-              const deltaZ = pos.area - area
-              camera.setAttribute("position", `${deltaX * 0.01} ${deltaY * 0.01} ${deltaZ * 0.0001}`)
+              // Track deltas and update aframe camera position.
+              const deltaX = pos.x - x
+              const deltaY = pos.y - y
+              const deltaZ = (pos.width - width + pos.height - height) / 2
+              console.log(deltaZ)
+              camera.setAttribute("position", `${deltaX * 0.01} ${deltaY * 0.01} ${deltaZ * -0.013}`)
             }
           }
-          requestAnimationFrame(updatePosition)
         }
       })
   </script>
