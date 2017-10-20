@@ -4,14 +4,11 @@
 <head>
   <title>My A-Frame Test</title>
   <script src="//aframe.io/releases/0.7.0/aframe.min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/tracking-min.js"></script>
-  <script src="//cdnjs.cloudflare.com/ajax/libs/tracking.js/1.1.3/data/face-min.js"></script>
+  <script src="//unpkg.com/clmtrackr@latest/build/clmtrackr.min.js"></script>
   <!-- <script src="https://unpkg.com/aframe-forcegraph-component/dist/aframe-forcegraph-component.min.js"></script> -->
 </head>
 
 <body>
-  <video id="video" width="320" height="240" preload autoplay loop muted style="opacity: 0.0000001;position: absolute"></video>
-
   <a-scene>
     <a-entity id="myCameraPosition" position="0 0 0">
       <a-entity id="myCamera" camera look-controls keyboard-controls>
@@ -25,30 +22,58 @@
   </a-scene>
 
   <script>
-    let pos = null
-    let frame = null
-    const factor = 0.1
-    const camera = document.getElementById("myCameraPosition")
-    const tracker = new tracking.ObjectTracker(['face']);
-    tracker.setInitialScale(4);
-    tracker.setStepSize(2);
-    tracker.setEdgesDensity(0.1);
+    // Load the camera feed from the user facing camera.
+    navigator
+      .mediaDevices
+      .getUserMedia({ audio: false, video: { facingMode: 'user'} })
+      .then(stream => {
+        /**
+         * Converts the camera stream into a video element and starts head tracking.
+         */
+        let pos;
+        const camera = document.getElementById("myCameraPosition")
+        const video = document.createElement('video')
+        const tracker = new clm.tracker();
+        video.srcObject = stream;
+        video.onloadedmetadata = (e) => {
+          video.width = video.videoWidth
+          video.height = video.videoHeight
+          video.play();
+          tracker.init();
+          tracker.start(video);
+          updatePosition();
+        }
+        
+        /**
+         * Checks the current face position and updates the aframe camera.
+         */
+        function updatePosition () {
+          requestAnimationFrame(updatePosition)
+          const positions = tracker.getCurrentPosition();
 
-    tracking.track("#video", tracker, { camera: true })
-    tracker.on('track', ({ data: [rect] }) => {
-      if (!rect) return
-      if (!pos) {
-        pos = rect
-        return
-      }
+          if (positions) {
+            /**
+             * Pulls out useful positions from clm tracker.
+             * @see {@link https://www.auduno.com/clmtrackr/examples/media/facemodel_numbering_new.png}
+             */
+            const [x, y] = positions[62]
+            const width = positions[1][0] - positions[13][0]
+            const height = positions[33][1] - positions[7][1]
 
-      cancelAnimationFrame(frame)
-      frame = requestAnimationFrame(() => {
-        const deltaX = pos.x - rect.x
-        const deltaY = pos.y - rect.y
-        camera.setAttribute("position", `${deltaX * factor} ${deltaY * factor} 0`)
+            if (!pos) {
+              // Store initial position.
+              pos =  { x, y, width, height }
+            } else {
+              // Track deltas and update aframe camera position.
+              const deltaX = pos.x - x
+              const deltaY = pos.y - y
+              const deltaZ = (pos.width - width + pos.height - height) / 2
+              console.log(deltaZ)
+              camera.setAttribute("position", `${deltaX * 0.01} ${deltaY * 0.01} ${deltaZ * -0.013}`)
+            }
+          }
+        }
       })
-    });
   </script>
 </body>
 
